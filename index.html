@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HeyGen Video Generator — AI-Powered Video from Script + Image</title>
+  <meta name="description"
+    content="Generate professional AI videos with voice using HeyGen API. Upload an image, write a script, and get a polished video in minutes." />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>" />
+</head>
+
+<body>
+
+  <div class="app-container">
+
+    <!-- ── Header ──────────────────────────────────────────────────── -->
+    <header class="app-header">
+      <div class="app-logo">
+        <svg viewBox="0 0 24 24">
+          <path d="M5 3l14 9-14 9V3z" />
+        </svg>
+      </div>
+      <h1>HeyGen Video Generator</h1>
+      <p>Turn your ideas into stunning AI videos. Write a script, upload an image, and let the magic happen.</p>
+    </header>
+
+    <!-- ── Step 1: API Key ─────────────────────────────────────────── -->
+    <section class="card" id="card-apikey">
+      <div class="card-title">
+        <span class="step-badge">1</span>
+        <div class="icon">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+          </svg>
+        </div>
+        API Key
+      </div>
+
+      <div class="form-group">
+        <label for="api-key">Your HeyGen API Key</label>
+        <div class="api-key-group">
+          <input type="password" id="api-key" placeholder="Paste your API key here…" autocomplete="off" />
+          <button class="btn-verify" id="btn-verify" onclick="verifyKey()">Verify</button>
+        </div>
+        <div class="key-status" id="key-status"></div>
+      </div>
+    </section>
+
+    <!-- ── Step 2: Image URL ──────────────────────────────────────────── -->
+    <section class="card" id="card-upload">
+      <div class="card-title">
+        <span class="step-badge">2</span>
+        <div class="icon">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="1" />
+            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+          </svg>
+        </div>
+        Image URL
+      </div>
+
+      <div class="form-group">
+        <label for="image-url">Public Image URL</label>
+        <input type="url" id="image-url" placeholder="https://example.com/image.jpg or https://ibb.co/dwv2KjwW" />
+        <small style="color:var(--text-muted);margin-top:8px;display:block;">
+          ✅ Must be publicly accessible (no login required)
+          <br/>
+          ✅ Supported: PNG, JPEG, WebP
+          <br/>
+          ✅ Examples: ImgBB, Imgur, S3, Cloudinary, etc.
+        </small>
+        <button class="btn-primary" id="btn-create-avatar" onclick="createAvatar()" style="margin-top:12px;width:100%;">
+          Create Avatar from URL
+        </button>
+        <div class="avatar-status" id="avatar-status" style="margin-top:12px;"></div>
+      </div>
+    </section>
+
+    <!-- ── Step 3: Script & Options ────────────────────────────────── -->
+    <section class="card" id="card-prompt">
+      <div class="card-title">
+        <span class="step-badge">3</span>
+        <div class="icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
+        </div>
+        Script &amp; Options
+      </div>
+
+      <div class="form-group">
+        <label for="script">
+          Video Script
+          <small style="font-weight:400;color:var(--text-muted);margin-left:8px;">
+            ~43–45 words ≈ 20 seconds
+          </small>
+        </label>
+        <textarea id="script"
+          placeholder="e.g. Hello! Welcome to our product demo. Today I'll walk you through everything you need to know to get started quickly and confidently."></textarea>
+      </div>
+
+      <div class="form-row" style="display:flex;gap:16px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:2;min-width:180px;">
+          <label for="voice-select">Voice</label>
+          <select id="voice-select" disabled>
+            <option value="">Verify API Key to load voices…</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label for="expressiveness-select">Expressiveness</label>
+          <select id="expressiveness-select">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label for="resolution-select">Resolution</label>
+          <select id="resolution-select">
+            <option value="720p">720p</option>
+            <option value="1080p" selected>1080p</option>
+            <option value="4k">4K</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="flex:1;min-width:120px;">
+          <label for="aspect-ratio-select">Aspect Ratio</label>
+          <select id="aspect-ratio-select">
+            <option value="16:9" selected>16:9 (Landscape)</option>
+            <option value="9:16">9:16 (Portrait)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="motion-prompt">
+          Motion Hint
+          <small style="font-weight:400;color:var(--text-muted);margin-left:8px;">optional — e.g. "nodding
+            gently"</small>
+        </label>
+        <input type="text" id="motion-prompt" placeholder="e.g. gesturing with hands while presenting" />
+      </div>
+    </section>
+
+    <!-- ── Generate Button ─────────────────────────────────────────── -->
+    <button class="btn-generate" id="btn-generate" onclick="generateVideo()">
+      <svg viewBox="0 0 24 24">
+        <path d="M5 3l14 9-14 9V3z" />
+      </svg>
+      <span id="btn-generate-text">Generate Video</span>
+      <div class="spinner" id="spinner"></div>
+    </button>
+
+    <!-- ── Error Toast ─────────────────────────────────────────────── -->
+    <div class="error-toast" id="error-toast">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+      <span id="error-msg"></span>
+    </div>
+
+    <!-- ── Status Panel ────────────────────────────────────────────── -->
+    <div class="status-panel" id="status-panel">
+      <div class="status-card">
+        <div class="status-header">
+          <div class="status-label">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">Generating…</span>
+          </div>
+          <div class="status-phase" id="status-phase">PROCESSING</div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill indeterminate" id="progress-fill"></div>
+        </div>
+        <div class="status-details">
+          <div class="status-item">
+            <div class="label">Video ID</div>
+            <div class="value" id="detail-video">—</div>
+          </div>
+          <div class="status-item">
+            <div class="label">Status</div>
+            <div class="value" id="detail-status">—</div>
+          </div>
+          <div class="status-item">
+            <div class="label">Elapsed</div>
+            <div class="value" id="detail-elapsed">0s</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Video Result ────────────────────────────────────────────── -->
+    <div class="video-result" id="video-result">
+      <div class="video-wrapper">
+        <video id="result-video" controls></video>
+        <div class="video-actions">
+          <div class="video-meta">
+            <span id="video-duration">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              —
+            </span>
+            <span id="video-title-display"></span>
+          </div>
+          <a class="btn-download" id="btn-download" href="#" target="_blank" download>
+            <svg viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Download
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Footer ──────────────────────────────────────────────────── -->
+    <footer class="app-footer">
+      Powered by <a href="https://heygen.com" target="_blank" rel="noopener">HeyGen</a> v3 API &nbsp;·&nbsp; Built with
+      ❤️
+    </footer>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+     JavaScript — Core Logic
+     ═══════════════════════════════════════════════════════════════════ -->
+  <script>
+    // ── State ────────────────────────────────────────────────────────
+    let uploadedAvatarId = null;   // v3: avatar_id from URL
+    let polling = null;
+    let elapsedTimer = null;
+    let elapsedSeconds = 0;
+
+    // ── DOM Refs ─────────────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+
+    // ── Mouse glow effect on cards ───────────────────────────────────
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('mousemove', e => {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty('--mouse-x', `${e.clientX - r.left}px`);
+        card.style.setProperty('--mouse-y', `${e.clientY - r.top}px`);
+      });
+    });
+
+    // ── Create Avatar from URL ───────────────────────────────────────
+    async function createAvatar() {
+      const imageUrl = $('image-url').value.trim();
+      const apiKey = $('api-key').value.trim();
+      const statusEl = $('avatar-status');
+
+      if (!apiKey) { 
+        showError('Please verify your API key first.'); 
+        return; 
+      }
+      if (!imageUrl) { 
+        showError('Please enter an image URL.'); 
+        return; 
+      }
+
+      const btn = $('btn-create-avatar');
+      btn.disabled = true;
+      btn.textContent = 'Creating avatar…';
+      statusEl.innerHTML = '';
+      hideError();
+
+      try {
+        const resp = await fetch('/api/create-avatar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: apiKey,
+            image_url: imageUrl,
+          }),
+        });
+
+        const data = await resp.json();
+
+        if (data.success) {
+          uploadedAvatarId = data.data.avatar_id;
+          statusEl.className = 'avatar-status valid';
+          statusEl.innerHTML = `<span class="dot"></span> ✅ Avatar created! ID: ${uploadedAvatarId}`;
+          btn.textContent = '✓ Avatar Ready';
+          btn.style.backgroundColor = '#10b981';
+        } else {
+          showError(data.error || 'Failed to create avatar');
+          statusEl.innerHTML = '';
+        }
+      } catch (err) {
+        showError('Network error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ── Verify API Key ───────────────────────────────────────────────
+    async function verifyKey() {
+      const apiKey = $('api-key').value.trim();
+      if (!apiKey) { showError('Please enter your API key.'); return; }
+
+      const btn = $('btn-verify');
+      const statusEl = $('key-status');
+      btn.disabled = true;
+      btn.textContent = 'Verifying…';
+      statusEl.className = 'key-status';
+      statusEl.innerHTML = '';
+      hideError();
+
+      try {
+        const resp = await fetch('/api/verify-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: apiKey }),
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+          statusEl.className = 'key-status valid';
+          statusEl.innerHTML = `<span class="dot"></span> API key verified`;
+
+          // Populate voices dropdown
+          const voiceSelect = $('voice-select');
+          voiceSelect.innerHTML = '';
+
+          // v3 voices response shape: { voices: [...] }
+          const voices = data.data.voices || data.data || [];
+          if (voices.length) {
+            voices.forEach(v => {
+              const opt = document.createElement('option');
+              opt.value = v.voice_id;
+              opt.textContent = `${v.name} (${v.language})`;
+              voiceSelect.appendChild(opt);
+            });
+            voiceSelect.disabled = false;
+          } else {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'No voices found';
+            voiceSelect.appendChild(opt);
+          }
+        } else {
+          statusEl.className = 'key-status invalid';
+          statusEl.innerHTML = `<span class="dot"></span> ${data.error || 'Invalid API key'}`;
+        }
+      } catch (err) {
+        showError('Network error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Verify';
+      }
+    }
+
+    // ── Generate Video ───────────────────────────────────────────────
+    async function generateVideo() {
+      const apiKey = $('api-key').value.trim();
+      const script = $('script').value.trim();
+      const voiceId = $('voice-select').value;
+      const expressiveness = $('expressiveness-select').value;
+      const resolution = $('resolution-select').value;
+      const aspectRatio = $('aspect-ratio-select').value;
+      const motionPrompt = $('motion-prompt').value.trim();
+
+      if (!apiKey) { showError('Please enter your HeyGen API key.'); return; }
+      if (!script) { showError('Please write a video script.'); return; }
+      if (!uploadedAvatarId) { showError('Please create an avatar from the image URL first.'); return; }
+      if (!voiceId) { showError('Please select a voice. (Verify API key first)'); return; }
+
+      hideError();
+      setGenerating(true);
+
+      try {
+        // Submit video generation request
+        updateStatus('Submitting to HeyGen…', 'CREATING');
+        const body = {
+          api_key: apiKey,
+          script: script,
+          voice_id: voiceId,
+          avatar_id: uploadedAvatarId,
+          resolution: resolution,
+          aspect_ratio: aspectRatio,
+          expressiveness: expressiveness,
+        };
+        if (motionPrompt) body.motion_prompt = motionPrompt;
+
+        const genResp = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const genData = await genResp.json();
+
+        if (!genData.success) throw new Error(genData.error || 'Generation failed');
+
+        const videoId = genData.data.video_id;
+        if (!videoId) throw new Error('No video_id returned from generation API.');
+
+        $('detail-video').textContent = videoId;
+        $('detail-status').textContent = genData.data.status || '—';
+
+        updateStatus('Generating video…', 'PROCESSING');
+        startElapsedTimer();
+        pollVideoStatus(apiKey, videoId);
+
+      } catch (err) {
+        showError(err.message);
+        setGenerating(false);
+      }
+    }
+
+    // ── Poll video status until completed ────────────────────────────
+    function pollVideoStatus(apiKey, videoId) {
+      polling = setInterval(async () => {
+        try {
+          const resp = await fetch(`/api/status/${videoId}?api_key=${encodeURIComponent(apiKey)}`);
+          const data = await resp.json();
+          if (!data.success) return;
+
+          const video = data.data;
+          $('detail-status').textContent = video.status || '—';
+
+          if (video.status === 'completed') {
+            clearInterval(polling);
+            stopElapsedTimer();
+            markCompleted();
+
+            $('result-video').src = video.video_url;
+            $('btn-download').href = video.video_url;
+            $('video-duration').innerHTML = `
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            ${video.duration ? video.duration.toFixed(1) + 's' : '—'}
+          `;
+            $('video-title-display').textContent = video.title || '';
+            $('video-result').classList.add('visible');
+
+            const progressFill = $('progress-fill');
+            progressFill.classList.remove('indeterminate');
+            progressFill.style.width = '100%';
+
+            setGenerating(false);
+
+          } else if (video.status === 'failed') {
+            clearInterval(polling);
+            stopElapsedTimer();
+            showError(video.failure_message || 'Video generation failed.');
+            markFailed();
+            setGenerating(false);
+
+          } else {
+            const phaseMap = { pending: 'QUEUED', processing: 'RENDERING' };
+            $('status-phase').textContent = phaseMap[video.status] || video.status?.toUpperCase() || 'PROCESSING';
+          }
+        } catch (e) { /* retry silently */ }
+      }, 10000);
+    }
+
+    // ── UI Helpers ───────────────────────────────────────────────────
+    function setGenerating(active) {
+      const btn = $('btn-generate');
+      const spinner = $('spinner');
+      const text = $('btn-generate-text');
+
+      btn.disabled = active;
+      spinner.style.display = active ? 'block' : 'none';
+      text.textContent = active ? 'Generating…' : 'Generate Video';
+
+      if (active) {
+        $('status-panel').classList.add('visible');
+        $('video-result').classList.remove('visible');
+        $('status-dot').className = 'status-dot';
+        $('progress-fill').className = 'progress-fill indeterminate';
+        $('progress-fill').style.width = '';
+      }
+    }
+
+    function updateStatus(text, phase) {
+      $('status-text').textContent = text;
+      $('status-phase').textContent = phase;
+    }
+
+    function markCompleted() {
+      $('status-dot').classList.add('completed');
+      $('status-text').textContent = 'Video ready!';
+      $('status-phase').textContent = 'COMPLETED';
+    }
+
+    function markFailed() {
+      $('status-dot').classList.add('failed');
+      $('status-text').textContent = 'Generation failed';
+      $('status-phase').textContent = 'FAILED';
+      $('progress-fill').classList.remove('indeterminate');
+      $('progress-fill').style.width = '100%';
+      $('progress-fill').style.background = 'var(--accent-rose)';
+    }
+
+    function startElapsedTimer() {
+      elapsedSeconds = 0;
+      $('detail-elapsed').textContent = '0s';
+      elapsedTimer = setInterval(() => {
+        elapsedSeconds++;
+        const m = Math.floor(elapsedSeconds / 60);
+        const s = elapsedSeconds % 60;
+        $('detail-elapsed').textContent = m > 0 ? `${m}m ${s}s` : `${s}s`;
+      }, 1000);
+    }
+
+    function stopElapsedTimer() {
+      if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+    }
+
+    function showError(msg) {
+      $('error-msg').textContent = msg;
+      $('error-toast').classList.add('visible');
+    }
+
+    function hideError() {
+      $('error-toast').classList.remove('visible');
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+  </script>
+
+</body>
+
+</html>
