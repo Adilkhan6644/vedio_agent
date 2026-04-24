@@ -6,6 +6,7 @@ Served via FastAPI.
 API Docs: https://developers.heygen.com/reference/create-avatar
 """
 
+import asyncio
 import os
 import sys
 import base64
@@ -23,9 +24,15 @@ AGENT_DIR = Path(__file__).parent / "agent"
 if str(AGENT_DIR) not in sys.path:
     sys.path.insert(0, str(AGENT_DIR))
 
+FOLLOW_BOT_DIR = Path(__file__).parent / "automated_follow"
+if str(FOLLOW_BOT_DIR) not in sys.path:
+    sys.path.insert(0, str(FOLLOW_BOT_DIR))
+
+from automated_follow.ig_bot import run_instagram_follow_bot
+
 # Import agent functions (will work if .env has GROQ_API_KEY and SERPER_API_KEY)
 try:
-    from research_agent import run_solution_agent, run_script_agent, run_rating_agent, search_web
+    from agent.research_agent import run_solution_agent, run_script_agent, run_rating_agent, search_web
     AGENTS_AVAILABLE = True
 except Exception as e:
     print(f"[WARNING] Agents not available: {e}")
@@ -298,6 +305,18 @@ class HeyGenClient:
 #  FastAPI Server — serves the frontend & proxies HeyGen API calls
 # ═══════════════════════════════════════════════════════════════════════════
 
+def _run_instagram_bot_wrapper(search_query, max_follows, username, password, headless):
+    """Module-level wrapper for ProcessPoolExecutor (must be pickleable)."""
+    return run_instagram_follow_bot(
+        search_query=search_query,
+        max_follows=max_follows,
+        username=username,
+        password=password,
+        headless=headless,
+        save_csv=False,
+    )
+
+
 def create_app():
     """Create and configure the FastAPI application."""
     from fastapi import FastAPI
@@ -323,6 +342,13 @@ def create_app():
         aspect_ratio: str = "16:9"
         expressiveness: str = "medium"
         motion_prompt: str | None = None
+
+    class InstagramFollowRequest(BaseModel):
+        search_query: str = "fitness coach"
+        max_follows: int = 5
+        username: str | None = None
+        password: str | None = None
+        headless: bool = True
 
     # ── Serve frontend ───────────────────────────────────────────────
     @app.get("/")
@@ -438,6 +464,37 @@ def create_app():
             return JSONResponse(
                 status_code=500,
                 content={"success": False, "error": f"Server error: {str(e)}"},
+            )
+
+    @app.post("/api/instagram/follow")
+    async def api_instagram_follow(body: InstagramFollowRequest):
+        try:
+            from concurrent.futures import ProcessPoolExecutor
+            loop = asyncio.get_running_loop()
+            with ProcessPoolExecutor(max_workers=1) as executor:
+                result = await loop.run_in_executor(
+                    executor,
+                    _run_instagram_bot_wrapper,
+                    body.search_query,
+                    body.max_follows,
+                    body.username,
+                    body.password,
+                    body.headless,
+                )
+            return {
+                "success": True,
+                "data": {
+                    "collected_profiles": result.get("collected_profiles", []),
+                    "followed_profiles": result.get("followed_profiles", []),
+                },
+            }
+        except Exception as e:
+            import traceback
+            print(f"[ERROR] Instagram follow failed:\n{traceback.format_exc()}")
+            error_detail = str(e) or e.__class__.__name__
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error": f"Instagram follow error: {error_detail}"},
             )
 
     # ── API: Check video status ──────────────────────────────────────

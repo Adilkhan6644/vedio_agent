@@ -7,14 +7,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-USERNAME = os.getenv("INSTAGRAM_USERNAME")
-PASSWORD = os.getenv("INSTAGRAM_PASSWORD")
-SEARCH_QUERY = "fitness coach"
-MAX_FOLLOWS = 5
-
-if not USERNAME or not PASSWORD:
-    raise RuntimeError("Set INSTAGRAM_USERNAME and INSTAGRAM_PASSWORD environment variables before running the script.")
-
 def human_delay(min_s=0.25, max_s=0.8):
     import random
     time.sleep(random.uniform(min_s, max_s))
@@ -198,136 +190,180 @@ def follow_profiles(page, profile_urls, max_to_follow=5):
 
     return followed
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False)
-    context = browser.new_context()
-    page = context.new_page()
-    page.set_default_timeout(6000)
 
-    # 1. Go to Instagram
-    page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
-    page.wait_for_load_state("domcontentloaded")
-    page.wait_for_timeout(1200)
+def run_instagram_follow_bot(search_query, max_follows, username, password, headless, save_csv):
+    username = username or os.getenv("INSTAGRAM_USERNAME")
+    password = password or os.getenv("INSTAGRAM_PASSWORD")
 
-    # Optional cookie banner handling
-    for cookie_selector in [
-        'button:has-text("Allow all cookies")',
-        'button:has-text("Only allow essential cookies")',
-        'button:has-text("Accept all")',
-    ]:
+    if not username or not password:
+        raise RuntimeError(
+            "Set INSTAGRAM_USERNAME and INSTAGRAM_PASSWORD environment variables or pass username/password before running the script."
+        )
+
+    collected = []
+    followed_profiles = []
+    csv_path = None
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=headless)
+        context = browser.new_context()
+        page = context.new_page()
+        page.set_default_timeout(6000)
+
         try:
-            page.locator(cookie_selector).first.click(timeout=2000)
-            break
-        except Exception:
-            pass
+            # 1. Go to Instagram
+            page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
+            page.wait_for_load_state("domcontentloaded")
+            page.wait_for_timeout(1200)
 
-    # 2. Login
-    username_selectors = [
-        'input[name="email"]',
-        'input[autocomplete="username webauthn"]',
-        'input[name="email"][type="text"]',
-        'input[name="username"]',
-        'input[autocomplete="username"]',
-        'input[type="text"]',
-        'input[type="email"]',
-        'input[type="tel"]',
-        'input[aria-label="Phone number, username, or email"]',
-        'input[aria-label="Mobile Number, Email or Username"]',
-        'input[placeholder="Phone number, username, or email"]',
-        'input[placeholder="Mobile number, username or email"]',
-    ]
-    password_selectors = [
-        'input[name="password"]',
-        'input[type="password"]',
-        'input[autocomplete="current-password"]',
-        'input[aria-label="Password"]',
-        'input[placeholder="Password"]',
-    ]
-    submit_selectors = [
-        'button[type="submit"]',
-        'button:has-text("Log in")',
-        'button:has-text("Log In")',
-        'div[role="button"]:has-text("Log in")',
-    ]
+            # Optional cookie banner handling
+            for cookie_selector in [
+                'button:has-text("Allow all cookies")',
+                'button:has-text("Only allow essential cookies")',
+                'button:has-text("Accept all")',
+            ]:
+                try:
+                    page.locator(cookie_selector).first.click(timeout=2000)
+                    break
+                except Exception:
+                    pass
 
-    auto_login_done = False
-    try:
-        fill_first_available(page, username_selectors, USERNAME, timeout=15000)
-        fill_first_available(page, password_selectors, PASSWORD, timeout=15000)
-        click_first_available(page, submit_selectors, timeout=10000)
-        auto_login_done = True
-    except RuntimeError:
-        print("Auto-login fields were not detected.")
+            # 2. Login
+            username_selectors = [
+                'input[name="email"]',
+                'input[autocomplete="username webauthn"]',
+                'input[name="email"][type="text"]',
+                'input[name="username"]',
+                'input[autocomplete="username"]',
+                'input[type="text"]',
+                'input[type="email"]',
+                'input[type="tel"]',
+                'input[aria-label="Phone number, username, or email"]',
+                'input[aria-label="Mobile Number, Email or Username"]',
+                'input[placeholder="Phone number, username, or email"]',
+                'input[placeholder="Mobile number, username or email"]',
+            ]
+            password_selectors = [
+                'input[name="password"]',
+                'input[type="password"]',
+                'input[autocomplete="current-password"]',
+                'input[aria-label="Password"]',
+                'input[placeholder="Password"]',
+            ]
+            submit_selectors = [
+                'button[type="submit"]',
+                'button:has-text("Log in")',
+                'button:has-text("Log In")',
+                'div[role="button"]:has-text("Log in")',
+            ]
 
-    if not auto_login_done:
-        print("Please complete login manually in the opened browser window.")
-        input("After login is complete, press Enter to continue...")
+            auto_login_done = False
+            try:
+                fill_first_available(page, username_selectors, username, timeout=15000)
+                fill_first_available(page, password_selectors, password, timeout=15000)
+                click_first_available(page, submit_selectors, timeout=10000)
+                auto_login_done = True
+            except RuntimeError:
+                print("Auto-login fields were not detected.")
 
-    try:
-        page.wait_for_load_state("networkidle", timeout=8000)
-    except Exception:
-        pass
+            if not auto_login_done:
+                if headless:
+                    raise RuntimeError(
+                        "Auto-login fields were not detected in headless mode. Provide valid credentials or run the bot interactively."
+                    )
+                print("Please complete login manually in the opened browser window.")
+                input("After login is complete, press Enter to continue...")
 
-    if not wait_for_login_success(page, timeout_ms=90000):
-        raise RuntimeError("Login did not complete in time. Check credentials, 2FA, or checkpoint prompts.")
+            try:
+                page.wait_for_load_state("networkidle", timeout=8000)
+            except Exception:
+                pass
 
-    page.wait_for_timeout(1000)
+            if not wait_for_login_success(page, timeout_ms=90000):
+                raise RuntimeError("Login did not complete in time. Check credentials, 2FA, or checkpoint prompts.")
 
-    # Handle post-login popups if they appear (can show multiple times)
-    dismiss_all_not_now_popups(page)
+            page.wait_for_timeout(1000)
 
-    human_delay()
+            # Handle post-login popups if they appear (can show multiple times)
+            dismiss_all_not_now_popups(page)
 
-    # 3. Search for niche
-    open_search_from_nav(page)
-    dismiss_all_not_now_popups(page)
+            human_delay()
 
-    search_candidates = [
-        'input[placeholder="Search"]',
-        'input[aria-label="Search input"]',
-        'input[aria-label="Search"]',
-        'input[type="search"]',
-        'input[placeholder*="Search"]',
-    ]
-    used_search_selector = None
-    for sel in search_candidates:
-        locator = page.locator(sel).first
-        try:
-            locator.wait_for(state="visible", timeout=2500)
-            locator.click()
-            locator.fill(SEARCH_QUERY)
-            used_search_selector = sel
-            break
-        except Exception:
-            continue
+            # 3. Search for niche
+            open_search_from_nav(page)
+            dismiss_all_not_now_popups(page)
 
-    if not used_search_selector:
-        raise RuntimeError("Could not find search input after login.")
+            search_candidates = [
+                'input[placeholder="Search"]',
+                'input[aria-label="Search input"]',
+                'input[aria-label="Search"]',
+                'input[type="search"]',
+                'input[placeholder*="Search"]',
+            ]
+            used_search_selector = None
+            for sel in search_candidates:
+                locator = page.locator(sel).first
+                try:
+                    locator.wait_for(state="visible", timeout=2500)
+                    locator.click()
+                    locator.fill(search_query)
+                    used_search_selector = sel
+                    break
+                except Exception:
+                    continue
 
-    # One more pass in case another notification prompt appears after focus/input.
-    dismiss_all_not_now_popups(page)
+            if not used_search_selector:
+                raise RuntimeError("Could not find search input after login.")
 
-    page.wait_for_timeout(1000)
+            # One more pass in case another notification prompt appears after focus/input.
+            dismiss_all_not_now_popups(page)
 
-    # 4. Open profile/account results and gather candidate profiles.
-    open_accounts_tab(page)
-    page.wait_for_timeout(700)
-    dismiss_all_not_now_popups(page)
+            page.wait_for_timeout(1000)
 
-    collected = collect_search_profile_links(page, max_links=20, scroll_rounds=3)
-    print(f"Collected {len(collected)} profile candidates")
+            # 4. Open profile/account results and gather candidate profiles.
+            open_accounts_tab(page)
+            page.wait_for_timeout(700)
+            dismiss_all_not_now_popups(page)
 
-    # 5. Visit and follow top profiles.
-    followed_profiles = follow_profiles(page, collected, max_to_follow=MAX_FOLLOWS)
-    print(f"Followed {len(followed_profiles)} profiles")
+            collected = collect_search_profile_links(page, max_links=20, scroll_rounds=3)
+            print(f"Collected {len(collected)} profile candidates")
 
-    # 6. Save candidates and followed profiles to CSV.
-    with open("profiles.csv", "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["profile_url", "followed"])
-        for url in collected:
-            writer.writerow([url, "yes" if url in followed_profiles else "no"])
+            # 5. Visit and follow top profiles.
+            followed_profiles = follow_profiles(page, collected, max_to_follow=max_follows)
+            print(f"Followed {len(followed_profiles)} profiles")
 
-    print("Saved to profiles.csv")
+            # 6. Save candidates and followed profiles to CSV.
+            if save_csv:
+                csv_path = "profiles.csv"
+                with open(csv_path, "w", newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["profile_url", "followed"])
+                    for url in collected:
+                        writer.writerow([url, "yes" if url in followed_profiles else "no"])
 
-    browser.close()
+                print("Saved to profiles.csv")
+        finally:
+            browser.close()
+
+    return {
+        "collected_profiles": collected,
+        "followed_profiles": followed_profiles,
+        "csv_path": csv_path,
+    }
+
+
+if __name__ == "__main__":
+    SEARCH_QUERY = "fitness coach"
+    MAX_FOLLOWS = 5
+
+    result = run_instagram_follow_bot(
+        search_query=SEARCH_QUERY,
+        max_follows=MAX_FOLLOWS,
+        username=os.getenv("INSTAGRAM_USERNAME"),
+        password=os.getenv("INSTAGRAM_PASSWORD"),
+        headless=False,
+        save_csv=True,
+    )
+
+    print(f"Collected {len(result['collected_profiles'])} profile candidates")
+    print(f"Followed {len(result['followed_profiles'])} profiles")
