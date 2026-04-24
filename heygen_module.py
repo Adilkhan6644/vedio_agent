@@ -29,6 +29,7 @@ if str(FOLLOW_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(FOLLOW_BOT_DIR))
 
 from automated_follow.ig_bot import run_instagram_follow_bot
+from automated_follow.comments import run_instagram_comment_bot
 
 # Import agent functions (will work if .env has GROQ_API_KEY and SERPER_API_KEY)
 try:
@@ -317,13 +318,32 @@ def _run_instagram_bot_wrapper(search_query, max_follows, username, password, he
     )
 
 
+def _run_instagram_comments_wrapper(search_query, max_follows, username, password, headless):
+    """Module-level wrapper for ProcessPoolExecutor (must be pickleable)."""
+    return run_instagram_comment_bot(
+        search_query=search_query,
+        max_follows=max_follows,
+        username=username,
+        password=password,
+        headless=headless,
+        save_csv=False,
+    )
+
+
 def create_app():
     """Create and configure the FastAPI application."""
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse, FileResponse
     from pydantic import BaseModel
 
-    app = FastAPI(title="HeyGen Photo Avatar Video Generator", version="2.0.0")
+    app = FastAPI(
+        title="HeyGen Photo Avatar Video Generator",
+        version="2.0.0",
+        openapi_tags=[
+            {"name": "Instagram Automated Follow", "description": "Instagram profile discovery and follow automation endpoints."},
+            {"name": "Instagram Automated Comments", "description": "Instagram comment automation endpoints from automated_follow/comments.py."},
+        ],
+    )
 
     # ── Pydantic models ───────────────────────────────────────────────
     class VerifyKeyRequest(BaseModel):
@@ -344,6 +364,13 @@ def create_app():
         motion_prompt: str | None = None
 
     class InstagramFollowRequest(BaseModel):
+        search_query: str = "fitness coach"
+        max_follows: int = 5
+        username: str | None = None
+        password: str | None = None
+        headless: bool = True
+
+    class InstagramCommentsRequest(BaseModel):
         search_query: str = "fitness coach"
         max_follows: int = 5
         username: str | None = None
@@ -466,7 +493,7 @@ def create_app():
                 content={"success": False, "error": f"Server error: {str(e)}"},
             )
 
-    @app.post("/api/instagram/follow")
+    @app.post("/api/instagram/follow", tags=["Instagram Automated Follow"])
     async def api_instagram_follow(body: InstagramFollowRequest):
         try:
             from concurrent.futures import ProcessPoolExecutor
@@ -495,6 +522,38 @@ def create_app():
             return JSONResponse(
                 status_code=500,
                 content={"success": False, "error": f"Instagram follow error: {error_detail}"},
+            )
+
+    @app.post("/api/instagram/comments", tags=["Instagram Automated Comments"])
+    async def api_instagram_comments(body: InstagramCommentsRequest):
+        try:
+            from concurrent.futures import ProcessPoolExecutor
+            loop = asyncio.get_running_loop()
+            with ProcessPoolExecutor(max_workers=1) as executor:
+                result = await loop.run_in_executor(
+                    executor,
+                    _run_instagram_comments_wrapper,
+                    body.search_query,
+                    body.max_follows,
+                    body.username,
+                    body.password,
+                    body.headless,
+                )
+            return {
+                "success": True,
+                "data": {
+                    "collected_profiles": result.get("collected_profiles", []),
+                    "followed_profiles": result.get("followed_profiles", []),
+                    "comments": result.get("comments", []),
+                },
+            }
+        except Exception as e:
+            import traceback
+            print(f"[ERROR] Instagram comments failed:\n{traceback.format_exc()}")
+            error_detail = str(e) or e.__class__.__name__
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error": f"Instagram comments error: {error_detail}"},
             )
 
     # ── API: Check video status ──────────────────────────────────────
