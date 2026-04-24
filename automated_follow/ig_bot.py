@@ -3,13 +3,20 @@ import os
 import time
 import csv
 import re
+import random
 from dotenv import load_dotenv
 
 load_dotenv()
 
 def human_delay(min_s=0.25, max_s=0.8):
-    import random
     time.sleep(random.uniform(min_s, max_s))
+
+
+def type_like_human(locator, text, min_key_delay=45, max_key_delay=120):
+    locator.click()
+    locator.fill("")
+    for ch in text:
+        locator.type(ch, delay=random.randint(min_key_delay, max_key_delay))
 
 
 def fill_first_available(page, selectors, value, timeout=3500):
@@ -17,7 +24,7 @@ def fill_first_available(page, selectors, value, timeout=3500):
         locator = page.locator(selector).first
         try:
             locator.wait_for(state="visible", timeout=timeout)
-            locator.fill(value)
+            type_like_human(locator, value)
             return selector
         except Exception:
             continue
@@ -305,8 +312,7 @@ def run_instagram_follow_bot(search_query, max_follows, username, password, head
                 locator = page.locator(sel).first
                 try:
                     locator.wait_for(state="visible", timeout=2500)
-                    locator.click()
-                    locator.fill(search_query)
+                    type_like_human(locator, search_query)
                     used_search_selector = sel
                     break
                 except Exception:

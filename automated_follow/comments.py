@@ -3,6 +3,7 @@ import os
 import time
 import csv
 import re
+import random
 from dotenv import load_dotenv
 try:
     from groq import Groq
@@ -20,8 +21,14 @@ MAX_FOLLOWS = 5
 groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY and Groq else None
 
 def human_delay(min_s=0.25, max_s=0.8):
-    import random
     time.sleep(random.uniform(min_s, max_s))
+
+
+def type_like_human(locator, text, min_key_delay=45, max_key_delay=120):
+    locator.click()
+    locator.fill("")
+    for ch in text:
+        locator.type(ch, delay=random.randint(min_key_delay, max_key_delay))
 
 
 def fill_first_available(page, selectors, value, timeout=3500):
@@ -29,7 +36,7 @@ def fill_first_available(page, selectors, value, timeout=3500):
         locator = page.locator(selector).first
         try:
             locator.wait_for(state="visible", timeout=timeout)
-            locator.fill(value)
+            type_like_human(locator, value)
             return selector
         except Exception:
             continue
@@ -137,8 +144,7 @@ def comment_on_first_profile_post(page):
     if comment_box is None:
         raise RuntimeError("Could not find the comment field on the post.")
 
-    comment_box.click()
-    comment_box.fill(comment_text)
+    type_like_human(comment_box, comment_text)
     page.wait_for_timeout(500)
 
     def wait_for_comment_submit(action, timeout=9000):
@@ -478,8 +484,7 @@ def run_instagram_comment_bot(
             locator = page.locator(sel).first
             try:
                 locator.wait_for(state="visible", timeout=2500)
-                locator.click()
-                locator.fill(search_query)
+                type_like_human(locator, search_query)
                 used_search_selector = sel
                 break
             except Exception:
