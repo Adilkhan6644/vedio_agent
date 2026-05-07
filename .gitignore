@@ -3,3 +3,11 @@ venv/
 __pycache__/
 temp_uploads/
 *.pyc
+
+# Large local FFmpeg binaries (do not commit)
+ffmpeg/bin/ffmpeg.exe
+ffmpeg/bin/ffplay.exe
+ffmpeg/bin/ffprobe.exe
+
+# Local OAuth credentials/tokens (never commit)
+credentials/*.json

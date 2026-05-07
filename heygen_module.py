@@ -358,6 +358,14 @@ def create_app():
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse, FileResponse
     from pydantic import BaseModel
+    
+    try:
+        from app.routes.shorts import public_router as shorts_public_router
+        from app.routes.shorts import router as shorts_router
+    except Exception as import_error:
+        shorts_router = None
+        shorts_public_router = None
+        print(f"[WARNING] Shorts router unavailable: {import_error}")
 
     app = FastAPI(
         title="HeyGen Photo Avatar Video Generator",
@@ -368,6 +376,11 @@ def create_app():
             {"name": "Instagram Profile Engagement", "description": "Instagram target-profile engagement endpoint from automated_follow/engagement_agent.py."},
         ],
     )
+
+    if shorts_router is not None:
+        app.include_router(shorts_router)
+    if shorts_public_router is not None:
+        app.include_router(shorts_public_router)
 
     # ── Pydantic models ───────────────────────────────────────────────
     class VerifyKeyRequest(BaseModel):
