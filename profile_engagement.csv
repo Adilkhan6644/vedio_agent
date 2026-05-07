@@ -1,0 +1,21 @@
+profile_url,post_url,liked,commented,comment_text,caption_excerpt,error
+https://www.instagram.com/instagram/,https://www.instagram.com/instagram/p/DXNYtNlAZUK/,yes,no,,,"Failed to submit comment: Locator.wait_for: Timeout 2500ms exceeded.
+Call log:
+  - waiting for locator(""[role=\""button\""]:has(span:has-text(\""Post\""))[aria-disabled=\""false\""]"").first to be visible
+"
+https://www.instagram.com/instagram/,https://www.instagram.com/instagram/reel/DXhUIoIAB8P/,yes,no,,,"Failed to submit comment: Locator.wait_for: Timeout 2500ms exceeded.
+Call log:
+  - waiting for locator(""[role=\""button\""]:has(span:has-text(\""Post\""))[aria-disabled=\""false\""]"").first to be visible
+"
+https://www.instagram.com/instagram/,https://www.instagram.com/instagram/reel/DXflQTwD9P-/,yes,no,,,"Failed to submit comment: Locator.wait_for: Timeout 2500ms exceeded.
+Call log:
+  - waiting for locator(""[role=\""button\""]:has(span:has-text(\""Post\""))[aria-disabled=\""false\""]"").first to be visible
+"
+https://www.instagram.com/instagram/,https://www.instagram.com/instagram/reel/DXexFHYgFZ3/,yes,no,,,"Failed to submit comment: Locator.wait_for: Timeout 2500ms exceeded.
+Call log:
+  - waiting for locator(""[role=\""button\""]:has(span:has-text(\""Post\""))[aria-disabled=\""false\""]"").first to be visible
+"
+https://www.instagram.com/instagram/,https://www.instagram.com/instagram/reel/DXcdVa9Dxen/,yes,no,,,"Failed to submit comment: Locator.wait_for: Timeout 2500ms exceeded.
+Call log:
+  - waiting for locator(""[role=\""button\""]:has(span:has-text(\""Post\""))[aria-disabled=\""false\""]"").first to be visible
+"

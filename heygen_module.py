@@ -30,6 +30,7 @@ if str(FOLLOW_BOT_DIR) not in sys.path:
 
 from automated_follow.ig_bot import run_instagram_follow_bot
 from automated_follow.comments import run_instagram_comment_bot
+from automated_follow.engagement_agent import run_instagram_profile_engagement_bot
 
 # Import agent functions (will work if .env has GROQ_API_KEY and SERPER_API_KEY)
 try:
@@ -330,6 +331,28 @@ def _run_instagram_comments_wrapper(search_query, max_follows, username, passwor
     )
 
 
+def _run_instagram_profile_engagement_wrapper(
+    target_username,
+    max_posts,
+    username,
+    password,
+    headless,
+    comment_each_post,
+    like_each_post,
+):
+    """Module-level wrapper for ProcessPoolExecutor (must be pickleable)."""
+    return run_instagram_profile_engagement_bot(
+        target_username=target_username,
+        max_posts=max_posts,
+        username=username,
+        password=password,
+        headless=headless,
+        comment_each_post=comment_each_post,
+        like_each_post=like_each_post,
+        save_csv=False,
+    )
+
+
 def create_app():
     """Create and configure the FastAPI application."""
     from fastapi import FastAPI
@@ -342,6 +365,7 @@ def create_app():
         openapi_tags=[
             {"name": "Instagram Automated Follow", "description": "Instagram profile discovery and follow automation endpoints."},
             {"name": "Instagram Automated Comments", "description": "Instagram comment automation endpoints from automated_follow/comments.py."},
+            {"name": "Instagram Profile Engagement", "description": "Instagram target-profile engagement endpoint from automated_follow/engagement_agent.py."},
         ],
     )
 
@@ -376,6 +400,15 @@ def create_app():
         username: str | None = None
         password: str | None = None
         headless: bool = True
+
+    class InstagramProfileEngagementRequest(BaseModel):
+        target_username: str
+        max_posts: int = 5
+        username: str | None = None
+        password: str | None = None
+        headless: bool = True
+        comment_each_post: bool = True
+        like_each_post: bool = True
 
     # ── Serve frontend ───────────────────────────────────────────────
     @app.get("/")
@@ -554,6 +587,40 @@ def create_app():
             return JSONResponse(
                 status_code=500,
                 content={"success": False, "error": f"Instagram comments error: {error_detail}"},
+            )
+
+    @app.post("/api/instagram/profile-engagement", tags=["Instagram Profile Engagement"])
+    async def api_instagram_profile_engagement(body: InstagramProfileEngagementRequest):
+        try:
+            from concurrent.futures import ProcessPoolExecutor
+            loop = asyncio.get_running_loop()
+            with ProcessPoolExecutor(max_workers=1) as executor:
+                result = await loop.run_in_executor(
+                    executor,
+                    _run_instagram_profile_engagement_wrapper,
+                    body.target_username,
+                    body.max_posts,
+                    body.username,
+                    body.password,
+                    body.headless,
+                    body.comment_each_post,
+                    body.like_each_post,
+                )
+            return {
+                "success": True,
+                "data": {
+                    "profile_url": result.get("profile_url", ""),
+                    "total_posts_collected": result.get("total_posts_collected", 0),
+                    "results": result.get("results", []),
+                },
+            }
+        except Exception as e:
+            import traceback
+            print(f"[ERROR] Instagram profile engagement failed:\n{traceback.format_exc()}")
+            error_detail = str(e) or e.__class__.__name__
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error": f"Instagram profile engagement error: {error_detail}"},
             )
 
     # ── API: Check video status ──────────────────────────────────────
